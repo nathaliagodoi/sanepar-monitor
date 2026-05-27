@@ -2,7 +2,7 @@ name: Sanepar Monitor
 
 on:
   schedule:
-    - cron: "*/3 * * * *"
+    - cron: "*/15 * * * *"
     # - cron: "0 11 * * *"
     # - cron: "0 17 * * *"
     # - cron: "0 23 * * *"
