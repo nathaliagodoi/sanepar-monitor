@@ -99,11 +99,23 @@ def extrair_tabela(page):
 
     log("Aguardando painel carregar")
 
-    page.wait_for_timeout(5000)
+    try:
 
-    painel = page.locator("calcite-flow-item")
+        # espera tabela aparecer
+        page.wait_for_selector(
+            "calcite-flow-item table tbody",
+            timeout=20000
+        )
 
-    tabela = painel.locator("table")
+    except Exception as e:
+
+        log(f"Tabela não apareceu: {e}")
+
+        return []
+
+    tabela = page.locator(
+        "calcite-flow-item table"
+    )
 
     if tabela.count() == 0:
 
@@ -113,13 +125,26 @@ def extrair_tabela(page):
 
     cells = tabela.locator("tbody td")
 
+    total = cells.count()
+
+    log(f"Total de células encontradas: {total}")
+
+    if total == 0:
+
+        log("Tabela vazia")
+
+        return []
+
     valores = []
 
-    for i in range(cells.count()):
+    for i in range(total):
 
-        valores.append(
-            cells.nth(i).inner_text().strip()
-        )
+        texto = cells.nth(i).inner_text().strip()
+
+        if texto:
+            valores.append(texto)
+
+    log(f"Valores encontrados: {valores}")
 
     chunk_size = 3
 
@@ -198,7 +223,7 @@ def consultar():
 
                     cards.nth(i).click()
 
-                    page.wait_for_timeout(4000)
+                    page.wait_for_timeout(8000)
 
                     tabela = extrair_tabela(page)
 
