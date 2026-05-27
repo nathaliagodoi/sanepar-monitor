@@ -56,14 +56,22 @@ jobs:
       # COMMIT AUTOMÁTICO DO STATUS
       # ==================================================
 
-      - name: Commit status file
-        run: |
+    - name: Commit status file
+    run: |
 
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+    if [ -f ultimo_status.json ]; then
 
-          git add ultimo_status.json
+      git config --global user.name "github-actions"
+      git config --global user.email "github-actions@github.com"
 
-          git diff --cached --quiet || git commit -m "Atualiza status monitor"
+      git add ultimo_status.json
 
-          git push
+      git diff --cached --quiet || git commit -m "Atualiza status monitor"
+
+      git push
+
+    else
+
+      echo "Nenhum arquivo de status encontrado."
+
+    fi
