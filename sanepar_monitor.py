@@ -27,7 +27,9 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # ======================================================
 
 def log(msg):
+
     agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
     linha = f"[{agora}] {msg}"
 
     print(linha)
@@ -55,7 +57,10 @@ def telegram(msg):
             timeout=30
         )
 
+        log("Mensagem enviada ao Telegram")
+
     except Exception as e:
+
         log(f"Erro Telegram: {e}")
 
 # ======================================================
@@ -78,12 +83,15 @@ def carregar_status():
 def salvar_status(registros):
 
     with open(STATUS_FILE, "w", encoding="utf-8") as f:
+
         json.dump(
             registros,
             f,
             ensure_ascii=False,
             indent=2
         )
+
+    log("Status salvo")
 
 def status_mudou(registros_atuais):
 
@@ -92,16 +100,42 @@ def status_mudou(registros_atuais):
     return status_anterior != registros_atuais
 
 # ======================================================
+# LOCALIZAR INPUT
+# ======================================================
+
+def localizar_input(page):
+
+    try:
+
+        xpath = "/html/body/div[2]/div[2]/div/div/div/div/div/div/div/div/div/div/div/div[2]/div/div[1]/div/div/div/div/div/div[2]/div/div/div/div/div[2]/div/div[1]/div/span/input"
+
+        campo = page.locator(f"xpath={xpath}")
+
+        campo.wait_for(
+            state="visible",
+            timeout=30000
+        )
+
+        log("Input localizado via XPath")
+
+        return campo
+
+    except Exception as e:
+
+        log(f"Erro ao localizar input: {e}")
+
+        return None
+
+# ======================================================
 # EXTRAIR TABELA
 # ======================================================
 
 def extrair_tabela(page):
 
-    log("Aguardando painel carregar")
-
     try:
 
-        # espera tabela aparecer
+        log("Aguardando tabela")
+
         page.wait_for_selector(
             "calcite-flow-item table tbody",
             timeout=20000
@@ -127,12 +161,9 @@ def extrair_tabela(page):
 
     total = cells.count()
 
-    log(f"Total de células encontradas: {total}")
+    log(f"Total de células: {total}")
 
     if total == 0:
-
-        log("Tabela vazia")
-
         return []
 
     valores = []
@@ -175,86 +206,153 @@ def extrair_tabela(page):
 # ======================================================
 
 def consultar():
+
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            locale="pt-BR"
+
+        browser = p.chromium.launch(
+            headless=True
         )
+
+        context = browser.new_context(
+            locale="pt-BR",
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            )
+        )
+
         page = context.new_page()
 
         try:
-            log("Abrindo portal")
-            page.goto(URL, wait_until="domcontentloaded")
-            
-            # Aguarda o carregamento inicial da rede estabilizar
-            page.wait_for_load_state("networkidle")
-            
-            log("Preenchendo CEP")
-            campo = page.get_by_role("textbox", name="Rua, número, cidade")
-            
-            # CORREÇÃO: Mudado de 'status' para 'state'
-            campo.wait_for(state="visible", timeout=20000)
-            
-            campo.click()
-            campo.fill("")
-            campo.fill(CEP)
-            
-            # Dispara eventos para garantir que o site processe a mudança do input
-            campo.dispatch_event("input")
-            campo.dispatch_event("change")
-            
-            log("Clicando no botão Pesquisar")
-            botao = page.get_by_role("button", name="Pesquisar")
-            
-            # CORREÇÃO: Mudado de 'status' para 'state'
-            botao.wait_for(state="visible", timeout=10000)
-            botao.click(force=True)
 
-            log("Aguardando container de resultados")
-            try:
-                page.wait_for_selector("div.record-container", timeout=30000)
-            except Exception as e:
-                log("Nenhum card de registro apareceu na tela. Verifique se o CEP foi aceito.")
+            log("Abrindo portal")
+
+            page.goto(
+                URL,
+                wait_until="domcontentloaded",
+                timeout=60000
+            )
+
+            page.wait_for_timeout(8000)
+
+            # ==================================================
+            # INPUT CEP
+            # ==================================================
+
+            campo = localizar_input(page)
+
+            if campo is None:
+
+                log("Campo CEP não encontrado")
+
                 return []
 
-            cards = page.locator("div.record-container")
+            log("Preenchendo CEP")
+
+            campo.click()
+
+            campo.fill(CEP)
+
+            page.wait_for_timeout(2000)
+
+            # ==================================================
+            # BOTÃO PESQUISAR
+            # ==================================================
+
+            try:
+
+                botao = page.get_by_role(
+                    "button",
+                    name="Pesquisar"
+                )
+
+                botao.click()
+
+            except Exception as e:
+
+                log(f"Erro botão pesquisar: {e}")
+
+                return []
+
+            # ==================================================
+            # AGUARDA RESULTADOS
+            # ==================================================
+
+            log("Aguardando resultados")
+
+            page.wait_for_timeout(8000)
+
+            cards = page.locator(
+                "div.record-container"
+            )
+
             total_cards = cards.count()
+
             log(f"Cards encontrados: {total_cards}")
+
+            if total_cards == 0:
+
+                log("Nenhuma ocorrência encontrada")
+
+                return []
 
             todos_registros = []
 
+            # ==================================================
+            # ABRE CADA CARD
+            # ==================================================
+
             for i in range(total_cards):
+
                 try:
-                    log(f"Abrindo ocorrência {i + 1} de {total_cards}")
-                    
-                    cards.nth(i).scroll_into_view_if_needed()
-                    cards.nth(i).click(force=True)
+
+                    log(f"Abrindo ocorrência {i + 1}")
+
+                    card = cards.nth(i)
+
+                    card.scroll_into_view_if_needed()
+
+                    card.click(force=True)
+
+                    page.wait_for_timeout(3000)
 
                     tabela = extrair_tabela(page)
+
                     todos_registros.extend(tabela)
 
-                    botao_voltar = page.locator("calcite-action[text='Voltar'], .back-button").first
-                    if botao_voltar.is_visible():
-                        botao_voltar.click(force=True)
-                        page.wait_for_timeout(1000)
-
                 except Exception as e:
+
                     log(f"Erro no card {i}: {e}")
 
-            resultado_unico = [dict(t) for t in {tuple(d.items()) for d in todos_registros}]
+            # ==================================================
+            # REMOVE DUPLICADOS
+            # ==================================================
+
+            resultado_unico = [
+                dict(t)
+                for t in {
+                    tuple(d.items())
+                    for d in todos_registros
+                }
+            ]
+
             return resultado_unico
 
         except Exception as e:
-            log(f"Erro geral durante a raspagem: {e}")
+
+            log(f"Erro geral durante scraping: {e}")
+
             return []
 
         finally:
+
             context.close()
+
             browser.close()
 
 # ======================================================
-# ENVIO TELEGRAM FORMATADO
+# ENVIO TELEGRAM
 # ======================================================
 
 def enviar_registros(registros):
@@ -267,7 +365,7 @@ def enviar_registros(registros):
             f"📅 <b>Início:</b> {r['inicio']}\n"
             f"📅 <b>Fim:</b> {r['fim']}\n"
             f"🛠 <b>Descrição:</b> {r['descricao']}\n"
-            f"-----------------------------\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
         )
 
     telegram(mensagem)
@@ -283,7 +381,7 @@ if __name__ == "__main__":
     registros = consultar()
 
     # ==================================================
-    # NÃO ENVIA SE NÃO EXISTIR REGISTRO
+    # SEM REGISTROS
     # ==================================================
 
     if not registros:
@@ -293,7 +391,7 @@ if __name__ == "__main__":
         exit()
 
     # ==================================================
-    # NÃO ENVIA SE FOR IGUAL AO ÚLTIMO STATUS
+    # STATUS IGUAL
     # ==================================================
 
     if not status_mudou(registros):
@@ -303,15 +401,17 @@ if __name__ == "__main__":
         exit()
 
     # ==================================================
-    # ENVIA SOMENTE SE MUDOU
+    # ENVIA TELEGRAM
     # ==================================================
 
     log("Mudança detectada")
 
     enviar_registros(registros)
 
-    salvar_status(registros)
+    # ==================================================
+    # SALVA STATUS
+    # ==================================================
 
-    log("Novo status salvo")
+    salvar_status(registros)
 
     log("Finalizado")
