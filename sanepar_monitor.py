@@ -288,36 +288,4 @@ if __name__ == "__main__":
 
     registros = consultar()
 
-    # ==================================================
-    # NÃO ENVIA SE NÃO EXISTIR REGISTRO
-    # ==================================================
-
-    if not registros:
-
-        log("Nenhum registro encontrado")
-
-        exit()
-
-    # ==================================================
-    # NÃO ENVIA SE FOR IGUAL AO ÚLTIMO STATUS
-    # ==================================================
-
-    if not status_mudou(registros):
-
-        log("Nenhuma mudança detectada")
-
-        exit()
-
-    # ==================================================
-    # ENVIA SOMENTE SE MUDOU
-    # ==================================================
-
-    log("Mudança detectada")
-
-    enviar_registros(registros)
-
-    salvar_status(registros)
-
-    log("Novo status salvo")
-
-    log("Finalizado")
+)
