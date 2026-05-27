@@ -5,27 +5,65 @@ on:
     - cron: "0 11 * * *"
     - cron: "0 17 * * *"
     - cron: "0 23 * * *"
+
   workflow_dispatch:
 
 jobs:
   run:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
-      - uses: actions/checkout@v4
+
+      # ==================================================
+      # BAIXA REPOSITÓRIO
+      # ==================================================
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ==================================================
+      # PYTHON
+      # ==================================================
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
+      # ==================================================
+      # DEPENDÊNCIAS
+      # ==================================================
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           playwright install --with-deps
 
-      - name: Run script
+      # ==================================================
+      # EXECUTA SCRIPT
+      # ==================================================
+
+      - name: Run monitor
         run: python sanepar_monitor.py
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
+
+      # ==================================================
+      # COMMIT AUTOMÁTICO DO STATUS
+      # ==================================================
+
+      - name: Commit status file
+        run: |
+
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          git add ultimo_status.json
+
+          git diff --cached --quiet || git commit -m "Atualiza status monitor"
+
+          git push
