@@ -47,7 +47,7 @@ def telegram(msg):
 
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-        requests.post(
+        response = requests.post(
             url,
             data={
                 "chat_id": CHAT_ID,
@@ -57,7 +57,9 @@ def telegram(msg):
             timeout=30
         )
 
-        log("Mensagem enviada ao Telegram")
+        log(f"Status Telegram: {response.status_code}")
+
+        log(f"Resposta Telegram: {response.text}")
 
     except Exception as e:
 
