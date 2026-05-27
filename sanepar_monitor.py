@@ -2,6 +2,7 @@ from playwright.sync_api import sync_playwright
 from datetime import datetime
 import requests
 import os
+import json
 
 # ======================================================
 # CONFIGURAÇÕES
@@ -13,6 +14,8 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
 URL = "https://portal.sanepar.com.br/paradasprogramadas/"
+
+STATUS_FILE = "ultimo_status.json"
 
 LOG_DIR = "logs"
 LOG_FILE = f"{LOG_DIR}/monitor.log"
@@ -26,6 +29,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 def log(msg):
     agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     linha = f"[{agora}] {msg}"
+
     print(linha)
 
     with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -36,8 +40,11 @@ def log(msg):
 # ======================================================
 
 def telegram(msg):
+
     try:
+
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+
         requests.post(
             url,
             data={
@@ -47,8 +54,42 @@ def telegram(msg):
             },
             timeout=30
         )
+
     except Exception as e:
         log(f"Erro Telegram: {e}")
+
+# ======================================================
+# STATUS
+# ======================================================
+
+def carregar_status():
+
+    if not os.path.exists(STATUS_FILE):
+        return []
+
+    try:
+
+        with open(STATUS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    except:
+        return []
+
+def salvar_status(registros):
+
+    with open(STATUS_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            registros,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+def status_mudou(registros_atuais):
+
+    status_anterior = carregar_status()
+
+    return status_anterior != registros_atuais
 
 # ======================================================
 # EXTRAIR TABELA
@@ -65,7 +106,9 @@ def extrair_tabela(page):
     tabela = painel.locator("table")
 
     if tabela.count() == 0:
+
         log("Tabela não encontrada")
+
         return []
 
     cells = tabela.locator("tbody td")
@@ -73,12 +116,15 @@ def extrair_tabela(page):
     valores = []
 
     for i in range(cells.count()):
-        valores.append(cells.nth(i).inner_text().strip())
+
+        valores.append(
+            cells.nth(i).inner_text().strip()
+        )
 
     chunk_size = 3
 
     linhas = [
-        valores[i:i+chunk_size]
+        valores[i:i + chunk_size]
         for i in range(0, len(valores), chunk_size)
     ]
 
@@ -108,6 +154,7 @@ def consultar():
     with sync_playwright() as p:
 
         browser = p.chromium.launch(headless=True)
+
         page = browser.new_page()
 
         try:
@@ -115,6 +162,7 @@ def consultar():
             log("Abrindo portal")
 
             page.goto(URL)
+
             page.wait_for_timeout(4000)
 
             log("Preenchendo CEP")
@@ -157,15 +205,19 @@ def consultar():
                     todos_registros.extend(tabela)
 
                 except Exception as e:
+
                     log(f"Erro no card {i}: {e}")
 
             return todos_registros
 
         except Exception as e:
+
             log(f"Erro geral: {e}")
+
             return []
 
         finally:
+
             browser.close()
 
 # ======================================================
@@ -173,10 +225,6 @@ def consultar():
 # ======================================================
 
 def enviar_registros(registros):
-
-    if not registros:
-        telegram("✅ Nenhuma parada programada encontrada para o CEP consultado.")
-        return
 
     mensagem = "🚨 <b>PARADAS PROGRAMADAS - SANEPAR</b>\n\n"
 
@@ -201,8 +249,36 @@ if __name__ == "__main__":
 
     registros = consultar()
 
-    log("Enviando para Telegram")
+    # ==================================================
+    # NÃO ENVIA SE NÃO EXISTIR REGISTRO
+    # ==================================================
+
+    if not registros:
+
+        log("Nenhum registro encontrado")
+
+        exit()
+
+    # ==================================================
+    # NÃO ENVIA SE FOR IGUAL AO ÚLTIMO STATUS
+    # ==================================================
+
+    if not status_mudou(registros):
+
+        log("Nenhuma mudança detectada")
+
+        exit()
+
+    # ==================================================
+    # ENVIA SOMENTE SE MUDOU
+    # ==================================================
+
+    log("Mudança detectada")
 
     enviar_registros(registros)
+
+    salvar_status(registros)
+
+    log("Novo status salvo")
 
     log("Finalizado")
