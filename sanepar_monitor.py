@@ -206,7 +206,7 @@ def consultar():
 
             page.wait_for_selector(
                 "div.record-container",
-                timeout=20000
+                timeout=40000
             )
 
             cards = page.locator("div.record-container")
