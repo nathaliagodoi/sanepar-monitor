@@ -17,34 +17,18 @@ jobs:
 
     steps:
 
-      # ==================================================
-      # BAIXA REPOSITÓRIO
-      # ==================================================
-
       - name: Checkout
         uses: actions/checkout@v4
-
-      # ==================================================
-      # PYTHON
-      # ==================================================
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # ==================================================
-      # DEPENDÊNCIAS
-      # ==================================================
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           playwright install --with-deps
-
-      # ==================================================
-      # EXECUTA SCRIPT
-      # ==================================================
 
       - name: Run monitor
         run: python sanepar_monitor.py
@@ -52,26 +36,21 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
 
-      # ==================================================
-      # COMMIT AUTOMÁTICO DO STATUS
-      # ==================================================
+      - name: Commit status file
+        run: |
+          if [ -f ultimo_status.json ]; then
 
-    - name: Commit status file
-    run: |
+            git config --global user.name "github-actions"
+            git config --global user.email "github-actions@github.com"
 
-    if [ -f ultimo_status.json ]; then
+            git add ultimo_status.json
 
-      git config --global user.name "github-actions"
-      git config --global user.email "github-actions@github.com"
+            git diff --cached --quiet || git commit -m "Atualiza status monitor"
 
-      git add ultimo_status.json
+            git push
 
-      git diff --cached --quiet || git commit -m "Atualiza status monitor"
+          else
 
-      git push
+            echo "Nenhum arquivo de status encontrado."
 
-    else
-
-      echo "Nenhum arquivo de status encontrado."
-
-    fi
+          fi
