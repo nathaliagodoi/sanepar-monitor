@@ -16,6 +16,7 @@ CHAT_ID = os.getenv("CHAT_ID")
 URL = "https://portal.sanepar.com.br/paradasprogramadas/"
 
 STATUS_FILE = "ultimo_status.json"
+ALERTA_DIARIO_FILE = "ultimo_alerta_diario.json"
 
 LOG_DIR = "logs"
 LOG_FILE = f"{LOG_DIR}/monitor.log"
@@ -29,7 +30,6 @@ os.makedirs(LOG_DIR, exist_ok=True)
 def log(msg):
 
     agora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-
     linha = f"[{agora}] {msg}"
 
     print(linha)
@@ -58,15 +58,13 @@ def telegram(msg):
         )
 
         log(f"Status Telegram: {response.status_code}")
-
         log(f"Resposta Telegram: {response.text}")
 
     except Exception as e:
-
         log(f"Erro Telegram: {e}")
 
 # ======================================================
-# STATUS
+# STATUS (MUDANÇAS)
 # ======================================================
 
 def carregar_status():
@@ -75,31 +73,52 @@ def carregar_status():
         return []
 
     try:
-
         with open(STATUS_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
-
     except:
         return []
 
 def salvar_status(registros):
 
     with open(STATUS_FILE, "w", encoding="utf-8") as f:
-
-        json.dump(
-            registros,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
+        json.dump(registros, f, ensure_ascii=False, indent=2)
 
     log("Status salvo")
 
 def status_mudou(registros_atuais):
 
     status_anterior = carregar_status()
-
     return status_anterior != registros_atuais
+
+# ======================================================
+# ALERTA DIÁRIO (NOVO)
+# ======================================================
+
+def carregar_alerta_diario():
+
+    if not os.path.exists(ALERTA_DIARIO_FILE):
+        return None
+
+    try:
+        with open(ALERTA_DIARIO_FILE, "r", encoding="utf-8") as f:
+            return json.load(f).get("data")
+    except:
+        return None
+
+def salvar_alerta_diario():
+
+    with open(ALERTA_DIARIO_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            {"data": datetime.now().strftime("%Y-%m-%d")},
+            f
+        )
+
+def pode_enviar_alerta_diario():
+
+    ultima_data = carregar_alerta_diario()
+    hoje = datetime.now().strftime("%Y-%m-%d")
+
+    return ultima_data != hoje
 
 # ======================================================
 # LOCALIZAR INPUT
@@ -113,10 +132,7 @@ def localizar_input(page):
 
         campo = page.locator(f"xpath={xpath}")
 
-        campo.wait_for(
-            state="visible",
-            timeout=30000
-        )
+        campo.wait_for(state="visible", timeout=30000)
 
         log("Input localizado via XPath")
 
@@ -125,7 +141,6 @@ def localizar_input(page):
     except Exception as e:
 
         log(f"Erro ao localizar input: {e}")
-
         return None
 
 # ======================================================
@@ -135,35 +150,22 @@ def localizar_input(page):
 def extrair_tabela(page):
 
     try:
-
         log("Aguardando tabela")
 
-        page.wait_for_selector(
-            "calcite-flow-item table tbody",
-            timeout=20000
-        )
+        page.wait_for_selector("calcite-flow-item table tbody", timeout=20000)
 
     except Exception as e:
-
         log(f"Tabela não apareceu: {e}")
-
         return []
 
-    tabela = page.locator(
-        "calcite-flow-item table"
-    )
+    tabela = page.locator("calcite-flow-item table")
 
     if tabela.count() == 0:
-
-        log("Tabela não encontrada")
-
         return []
 
     cells = tabela.locator("tbody td")
 
     total = cells.count()
-
-    log(f"Total de células: {total}")
 
     if total == 0:
         return []
@@ -171,13 +173,9 @@ def extrair_tabela(page):
     valores = []
 
     for i in range(total):
-
         texto = cells.nth(i).inner_text().strip()
-
         if texto:
             valores.append(texto)
-
-    log(f"Valores encontrados: {valores}")
 
     chunk_size = 3
 
@@ -189,7 +187,6 @@ def extrair_tabela(page):
     resultado = []
 
     for linha in linhas:
-
         if len(linha) < 3:
             continue
 
@@ -198,8 +195,6 @@ def extrair_tabela(page):
             "fim": linha[1],
             "descricao": linha[2]
         })
-
-    log(f"{len(resultado)} registros extraídos")
 
     return resultado
 
@@ -211,9 +206,7 @@ def consultar():
 
     with sync_playwright() as p:
 
-        browser = p.chromium.launch(
-            headless=True
-        )
+        browser = p.chromium.launch(headless=True)
 
         context = browser.new_context(
             locale="pt-BR",
@@ -230,106 +223,49 @@ def consultar():
 
             log("Abrindo portal")
 
-            page.goto(
-                URL,
-                wait_until="domcontentloaded",
-                timeout=60000
-            )
+            page.goto(URL, wait_until="domcontentloaded", timeout=60000)
 
             page.wait_for_timeout(8000)
-
-            # ==================================================
-            # INPUT CEP
-            # ==================================================
 
             campo = localizar_input(page)
 
             if campo is None:
-
-                log("Campo CEP não encontrado")
-
                 return []
 
-            log("Preenchendo CEP")
-
             campo.click()
-
             campo.fill(CEP)
 
             page.wait_for_timeout(2000)
 
-            # ==================================================
-            # BOTÃO PESQUISAR
-            # ==================================================
-
-            try:
-
-                botao = page.get_by_role(
-                    "button",
-                    name="Pesquisar"
-                )
-
-                botao.click()
-
-            except Exception as e:
-
-                log(f"Erro botão pesquisar: {e}")
-
-                return []
-
-            # ==================================================
-            # AGUARDA RESULTADOS
-            # ==================================================
-
-            log("Aguardando resultados")
+            botao = page.get_by_role("button", name="Pesquisar")
+            botao.click()
 
             page.wait_for_timeout(8000)
 
-            cards = page.locator(
-                "div.record-container"
-            )
+            cards = page.locator("div.record-container")
 
             total_cards = cards.count()
 
-            log(f"Cards encontrados: {total_cards}")
-
             if total_cards == 0:
-
-                log("Nenhuma ocorrência encontrada")
-
                 return []
 
             todos_registros = []
-
-            # ==================================================
-            # ABRE CADA CARD
-            # ==================================================
 
             for i in range(total_cards):
 
                 try:
 
-                    log(f"Abrindo ocorrência {i + 1}")
-
                     card = cards.nth(i)
-
                     card.scroll_into_view_if_needed()
-
                     card.click(force=True)
 
                     page.wait_for_timeout(3000)
 
                     tabela = extrair_tabela(page)
-
                     todos_registros.extend(tabela)
 
                 except Exception as e:
-
                     log(f"Erro no card {i}: {e}")
-
-            # ==================================================
-            # REMOVE DUPLICADOS
-            # ==================================================
 
             resultado_unico = [
                 dict(t)
@@ -342,19 +278,15 @@ def consultar():
             return resultado_unico
 
         except Exception as e:
-
-            log(f"Erro geral durante scraping: {e}")
-
+            log(f"Erro geral: {e}")
             return []
 
         finally:
-
             context.close()
-
             browser.close()
 
 # ======================================================
-# ENVIO TELEGRAM
+# TELEGRAM
 # ======================================================
 
 def enviar_registros(registros):
@@ -362,7 +294,6 @@ def enviar_registros(registros):
     mensagem = "🚨 <b>PARADAS PROGRAMADAS - SANEPAR</b>\n\n"
 
     for r in registros:
-
         mensagem += (
             f"📅 <b>Início:</b> {r['inicio']}\n"
             f"📅 <b>Fim:</b> {r['fim']}\n"
@@ -383,36 +314,39 @@ if __name__ == "__main__":
     registros = consultar()
 
     # ==================================================
-    # SEM REGISTROS
+    # SEM REGISTROS + ALERTA DIÁRIO
     # ==================================================
 
     if not registros:
 
         log("Nenhum registro encontrado")
 
+        if pode_enviar_alerta_diario():
+
+            telegram("✅ <b>Nenhuma parada programada encontrada para o CEP consultado.</b>")
+            salvar_alerta_diario()
+            log("Alerta diário enviado")
+
+        else:
+            log("Alerta diário já enviado hoje")
+
         exit()
 
     # ==================================================
-    # STATUS IGUAL
+    # SEM MUDANÇA
     # ==================================================
 
     if not status_mudou(registros):
 
         log("Nenhuma mudança detectada")
-
         exit()
 
     # ==================================================
-    # ENVIA TELEGRAM
+    # ENVIA ALERTA
     # ==================================================
 
     log("Mudança detectada")
-
     enviar_registros(registros)
-
-    # ==================================================
-    # SALVA STATUS
-    # ==================================================
 
     salvar_status(registros)
 
