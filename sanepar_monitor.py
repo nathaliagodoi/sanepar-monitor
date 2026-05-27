@@ -188,19 +188,33 @@ def consultar():
 
             page.goto(URL)
 
+            page.wait_for_load_state("networkidle")
+            
             page.wait_for_timeout(4000)
 
             log("Preenchendo CEP")
 
-            page.get_by_role(
+            campo = page.get_by_role(
                 "textbox",
                 name="Rua, número, cidade"
-            ).fill(CEP)
-
-            page.get_by_role(
+            )
+            
+            campo.wait_for(timeout=30000)
+            
+            campo.click()
+            
+            campo.fill(CEP)
+            
+            botao = page.get_by_role(
                 "button",
                 name="Pesquisar"
-            ).click()
+            )
+            
+            botao.wait_for(timeout=30000)
+            
+            page.wait_for_timeout(3000)
+            
+            botao.click(force=True)
 
             log("Aguardando resultados")
 
