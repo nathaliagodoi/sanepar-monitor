@@ -263,12 +263,12 @@ if __name__ == "__main__":
         # Se antes tínhamos paradas salvas e agora limpou, avisa a normalização
         if status_mudou(registros):
             log("Aviso de normalização: O status mudou para sem paradas.")
-            telegram("✅ <b>O abastecimento foi normalizado ou nenhuma parada está agendada.</b>")
+            telegram("✅ <b>O abastecimento foi normalizado. Boa tomar banho 🎉🎉🎉</b>")
             salvar_status(registros)  # Salva [] para atualizar o arquivo no Git
 
         # Se continua sem paradas e ainda não enviou o relatório de "tudo limpo" do dia
         elif pode_enviar_alerta_diario():
-            telegram("✅ <b>Nenhuma parada programada encontrada para o CEP consultado.</b>")
+            telegram("✅ <b>Nenhuma parada programada encontrada para a sua casa. O banho tá garantido 🎉🎉🎉</b>")
             salvar_alerta_diario()
             log("Alerta diário enviado")
             salvar_status(registros)  # Garante o gatilho de atualização do arquivo
