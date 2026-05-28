@@ -36,24 +36,24 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.CHAT_ID }}
 
-      - name: Commit status file
+      - name: Commit status files
         run: |
-          if [ -f ultimo_status.json ]; then
-            git config --global user.name "github-actions"
-            git config --global user.email "github-actions@github.com"
-            
-            git add ultimo_status.json
-            
-            # Se houver mudanças, faz o commit
-            if ! git diff --cached --quiet; then
-              git commit -m "Atualiza status monitor"
-              
-              # Garante que está sincronizado com a main antes de empurrar
-              git pull --rebase origin main
-              git push
-            else
-              echo "Nenhuma alteração detectada no status."
-            fi
+
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+          # adiciona arquivos mesmo se forem novos
+          git add ultimo_status.json ultimo_alerta_diario.json 2>/dev/null || true
+
+          # verifica alterações
+          if git diff --cached --quiet; then
+            echo "Nenhuma alteração para commit."
           else
-            echo "Nenhum arquivo de status encontrado."
+
+            git commit -m "Atualiza status monitor"
+
+            # atualiza branch antes do push
+            git pull --rebase origin main
+
+            git push
           fi
