@@ -2,8 +2,8 @@ name: Sanepar Monitor
 
 on:
   schedule:
-    - cron: "0 11 * * *"
-    - cron: "0 17 * * *"
+    - cron: "0 09 * * *"
+    - cron: "0 15 * * *"
     - cron: "0 20 * * *"
 
   workflow_dispatch:
