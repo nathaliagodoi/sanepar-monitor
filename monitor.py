@@ -9,6 +9,7 @@ load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
+CEP = os.getenv("CEP")
 
 if not TOKEN:
     raise ValueError("TELEGRAM_TOKEN não encontrado no .env")
