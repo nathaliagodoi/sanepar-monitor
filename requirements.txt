@@ -1,2 +1,2 @@
-playwright
 requests
+python-dotenv
