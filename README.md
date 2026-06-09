@@ -25,11 +25,10 @@ Antes de começar, você precisa:
 
 ## 🤖 Criando o bot no Telegram
 
-1. Abra o Telegram e procure por `@BotFather`
-2. Envie o comando: '/newbot'
-
-3. Escolha um nome e username para o bot
-4. Copie o **TOKEN gerado**
+1. Abra o Telegram e procure pelo [@BotFather](https://t.me/BotFather).
+2. Envie o comando: `/newbot`.
+3. Escolha um **nome** e um **username** (usuário) para o seu bot.
+4. Copie o **TOKEN** gerado.
 
 ---
 
@@ -40,14 +39,13 @@ Antes de começar, você precisa:
 
 3. Procure por algo como:
 
-```json
 {
   "chat": {
     "id": 123456789
   }
 }
 
-👉 Esse número é o seu CHAT_ID
+👉 O número que aparece no campo "id" (ex: 123456789) é o seu CHAT_ID.
 
 ---
 
