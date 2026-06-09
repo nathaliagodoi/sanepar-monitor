@@ -1,6 +1,12 @@
 from sanepar import consultar_cep, montar_mensagem
+import os
 
-resultado = consultar_cep("82820210")
+CEP = os.getenv("CEP")
+
+if not CEP:
+    raise ValueError("CEP não encontrado nas variáveis de ambiente")
+
+resultado = consultar_cep(CEP)
 
 mensagem = montar_mensagem(resultado)
 
