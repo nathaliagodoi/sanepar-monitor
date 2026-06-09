@@ -67,7 +67,8 @@ Settings → Secrets and variables → Actions → New repository secret
 ---
 
 ## 🧪 Exemplo de configuração
-CEP=87000000
+
+CEP=80000000
 TELEGRAM_TOKEN=123456:ABCDEF...
 CHAT_ID=123456789
 
