@@ -78,9 +78,9 @@ CHAT_ID=123456789
 
 O bot executa automaticamente nos seguintes horários:
 
-06:00
-12:00
-17:00
+06:00  
+12:00  
+17:00  
 
 ---
 
@@ -93,4 +93,4 @@ GitHub → Actions → Sanepar Monitor → Run workflow
 ---
 
 ## Como personalizar (Somente com ceps atendidos pela Sanepar)
-Para usar em outra região, basta alterar o secret: `CEP`
+O monitoramento funciona exclusivamente com CEPs atendidos pela Sanepar (Paraná). Para alterar a região que está sendo monitorada a qualquer momento, basta acessar as configurações do seu repositório e atualizar o valor do secret 'CEP'.
