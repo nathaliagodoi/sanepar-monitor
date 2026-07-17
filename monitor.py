@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 import os
 import json
 import requests
-from datetime import datetime
 from sanepar import consultar_cep, montar_mensagem
 load_dotenv()
 
@@ -18,8 +17,6 @@ if not CHAT_ID:
     raise ValueError("CHAT_ID não encontrado no .env")
 
 STATUS_FILE = "ultimo_status.json"
-ALERTA_FILE = "ultimo_alerta_diario.json"
-
 
 def log(msg):
     print(msg)
@@ -47,48 +44,15 @@ def telegram(msg):
 
 def carregar_status():
     if not os.path.exists(STATUS_FILE):
-        return []
+        return ""
 
-    try:
-        with open(STATUS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
+    with open(STATUS_FILE, "r", encoding="utf-8") as f:
+        return f.read()
 
 
-def salvar_status(registros):
+def salvar_status(msg):
     with open(STATUS_FILE, "w", encoding="utf-8") as f:
-        json.dump(registros, f, ensure_ascii=False, indent=2)
-
-
-def status_mudou(registros):
-    return carregar_status() != registros
-
-
-def carregar_alerta_diario():
-    if not os.path.exists(ALERTA_FILE):
-        return None
-
-    try:
-        with open(ALERTA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f).get("data")
-    except Exception:
-        return None
-
-
-def salvar_alerta_diario():
-    with open(ALERTA_FILE, "w", encoding="utf-8") as f:
-        json.dump(
-            {"data": datetime.now().strftime("%Y-%m-%d")},
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
-
-
-def pode_enviar_alerta_diario():
-    hoje = datetime.now().strftime("%Y-%m-%d")
-    return carregar_alerta_diario() != hoje
+        f.write(msg)
 
 if __name__ == "__main__":
 
@@ -96,56 +60,13 @@ if __name__ == "__main__":
 
     log("Consultando Sanepar")
 
-    def consultar():
-        return consultar_cep(CEP)
-    registros = consultar()
-
-    # =====================================
-    # SEM OCORRÊNCIAS
-    # =====================================
-
-    if not registros:
-
-        log("Nenhuma ocorrência encontrada")
-
-        if status_mudou(registros):
-
-            telegram(
-                "✅ O abastecimento foi normalizado. Boa tomar banho 🚿🎉"
-            )
-
-            salvar_status(registros)
-
-        elif pode_enviar_alerta_diario():
-
-            telegram(
-                "✅ Nenhuma parada programada encontrada para a sua casa. O banho tá garantido 🚿🎉"
-            )
-
-            salvar_alerta_diario()
-            salvar_status(registros)
-
-        else:
-
-            log("Alerta diário já enviado hoje")
-
-            salvar_status(registros)
-
-        exit()
-
-    # =====================================
-    # EXISTEM OCORRÊNCIAS
-    # =====================================
-
-    if not status_mudou(registros):
-
-        log("Nenhuma mudança detectada")
-        exit()
+    registros = consultar_cep(CEP)
 
     mensagem = montar_mensagem(registros)
 
-    telegram(mensagem)
-
-    salvar_status(registros)
-
-    log("Mudança detectada e enviada")
+    if mensagem.strip() != carregar_status().strip():
+        telegram(mensagem)
+        salvar_status(mensagem)
+        log("Mensagem alterada. Notificação enviada.")
+    else:
+        log("Mensagem não alterou. Nada enviado.")
