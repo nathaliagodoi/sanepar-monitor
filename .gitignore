@@ -2,5 +2,4 @@
 __pycache__/
 logs/
 
-ultimo_status.json
-ultimo_alerta_diario.json
+bot_interativo.py
