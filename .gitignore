@@ -3,3 +3,4 @@ __pycache__/
 logs/
 
 bot_interativo.py
+ultimo_status.py
