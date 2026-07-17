@@ -88,7 +88,7 @@ def consultar_cep(cep):
 def montar_mensagem(registros):
 
     if not registros:
-        return "✅ Nenhuma parada programada encontrada para a sua casa. O banho tá garantido 🎉🎉🎉"
+        return "✅ Nenhuma parada programada encontrada. O banho tá garantido 🎉🎉🎉"
 
     mensagem = "🚨 SANEPAR - OCORRÊNCIAS ENCONTRADAS\n\n"
 
