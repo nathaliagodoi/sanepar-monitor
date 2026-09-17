@@ -5,7 +5,6 @@ import requests
 from sanepar import consultar_cep, montar_mensagem
 load_dotenv()
 
-
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 CEP = os.getenv("CEP")
